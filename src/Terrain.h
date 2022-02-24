@@ -28,7 +28,7 @@ public:
 protected:
     CDT                    _cdt;
     SurfaceLayers          _surfaceLayersTerrain;
-    std::vector<Polygon_3> _constrainedPolys;
+    std::list<Polygon_3>   _constrainedPolys;
 };
 
 #endif //CITYCFD_TERRAIN_H

@@ -49,6 +49,8 @@ private:
     void average_polygon_points();
     void solve_building_conflicts();
 
+    void extrude_buildings(double h);
+
     void prep_feature_output();
     void prep_cityjson_output();
 

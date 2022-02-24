@@ -149,6 +149,10 @@ const Polygon_with_holes_2& PolyFeature::get_poly() const {
     return _poly;
 }
 
+std::vector<std::vector<double>>& PolyFeature::get_base_heights() {
+    return _base_heights;
+}
+
 const std::vector<std::vector<double>>& PolyFeature::get_base_heights() const {
     return _base_heights;
 }

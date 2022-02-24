@@ -55,7 +55,13 @@ void Terrain::prep_constraints(const PolyFeatures& features, Point_set_3& pointC
                 auto it = pointCloud.insert(Point_3(polyVertex.x(), polyVertex.y(), heights[polyCount][i++]));
                 if (is_building) is_building_pt[*it] = true;
             }
-            _constrainedPolys.push_back(pts);
+            //todo temp
+            if (!is_building) {
+                _constrainedPolys.push_back(pts);
+            } else
+            {
+                _constrainedPolys.push_front(pts);
+            }
             ++polyCount;
         }
         ++countFeatures;

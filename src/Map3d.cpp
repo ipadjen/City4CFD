@@ -55,7 +55,7 @@ void Map3d::reconstruct() {
     this->reconstruct_terrain();
 
     //-- Generate side and top boundaries
-    this->reconstruct_boundaries();
+    //this->reconstruct_boundaries();
 }
 
 void Map3d::set_features() {
@@ -223,6 +223,9 @@ void Map3d::reconstruct_terrain() {
 
 void Map3d::reconstruct_buildings() {
     std::cout << "\nReconstructing buildings" << std::endl;
+    //-- Extrude building bottoms
+    this->extrude_buildings(-1);
+
     if (!_importedBuildings.empty()) {
         std::cout << "    Will try to reconstruct imported buildings in LoD: " << config::importLoD
                   << ". If I cannot find a geometry with that LoD, I will reconstruct in the highest LoD available"
@@ -251,6 +254,7 @@ void Map3d::reconstruct_buildings() {
                        << failed << std::endl;
 
     this->clear_inactives();
+    this->extrude_buildings(+1);
 }
 
 void Map3d::reconstruct_boundaries() {
@@ -504,3 +508,15 @@ void Map3d::set_footprint_elevation(T& features) {
 template void Map3d::set_footprint_elevation<Buildings>    (Buildings& feature);
 template void Map3d::set_footprint_elevation<SurfaceLayers>(SurfaceLayers& feature);
 template void Map3d::set_footprint_elevation<PolyFeatures> (PolyFeatures& feature);
+
+void Map3d::extrude_buildings(double h) {
+    for (auto& f : _lsFeatures) {
+        if (f->get_class() == BUILDING) {
+            for (auto& ring : f->get_base_heights()) {
+                for (auto& pt : ring) {
+                    pt += h;
+                }
+            }
+        }
+    }
+}

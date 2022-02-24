@@ -28,6 +28,7 @@ public:
 
     Polygon_with_holes_2&                    get_poly();
     const Polygon_with_holes_2&              get_poly() const;
+    std::vector<std::vector<double>>&        get_base_heights();
     const std::vector<std::vector<double>>&  get_base_heights() const;
     const int                                get_internal_id() const;
 

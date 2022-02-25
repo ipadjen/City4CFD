@@ -14,6 +14,8 @@ public:
     virtual void reconstruct() = 0;
 
     void   check_feature_scope(const Polygon_2& influRegion);
+    void   translate_footprint(const double h);
+    void   refine();
     double max_dim();
 
     double get_height() const;

@@ -55,7 +55,8 @@ void Map3d::reconstruct() {
     this->reconstruct_terrain();
 
     //-- Generate side and top boundaries
-    //this->reconstruct_boundaries();
+    if (_output_boundary)
+        this->reconstruct_boundaries();
 }
 
 void Map3d::set_features() {
@@ -224,7 +225,8 @@ void Map3d::reconstruct_terrain() {
 void Map3d::reconstruct_buildings() {
     std::cout << "\nReconstructing buildings" << std::endl;
     //-- Extrude building bottoms
-    this->extrude_buildings(-1);
+    if (_intersect_buildings_terrain)
+        this->translate_building_footprint(-1);
 
     if (!_importedBuildings.empty()) {
         std::cout << "    Will try to reconstruct imported buildings in LoD: " << config::importLoD
@@ -241,6 +243,8 @@ void Map3d::reconstruct_buildings() {
         if (!f->is_active()) continue;
         try {
             f->reconstruct();
+            if (_refine_mesh)
+                f->refine(); // requirement for LBM
         } catch (std::exception& e) {
             ++failed;
             //-- Add information to log file
@@ -254,7 +258,8 @@ void Map3d::reconstruct_buildings() {
                        << failed << std::endl;
 
     this->clear_inactives();
-    this->extrude_buildings(+1);
+    if (_intersect_buildings_terrain)
+        this->translate_building_footprint(+1);
 }
 
 void Map3d::reconstruct_boundaries() {
@@ -337,6 +342,13 @@ void Map3d::solve_building_conflicts() {
    // to check if conflicts are solved
 //    for (auto& b : _importedBuildings) b->deactivate();
 //    this->clear_inactives();
+}
+
+// Requirement for LBM
+void Map3d::translate_building_footprint(double h) {
+    for (auto& b : _buildings) {
+        b->translate_footprint(h);
+    }
 }
 
 void Map3d::read_data() { // This will change with time
@@ -508,15 +520,3 @@ void Map3d::set_footprint_elevation(T& features) {
 template void Map3d::set_footprint_elevation<Buildings>    (Buildings& feature);
 template void Map3d::set_footprint_elevation<SurfaceLayers>(SurfaceLayers& feature);
 template void Map3d::set_footprint_elevation<PolyFeatures> (PolyFeatures& feature);
-
-void Map3d::extrude_buildings(double h) {
-    for (auto& f : _lsFeatures) {
-        if (f->get_class() == BUILDING) {
-            for (auto& ring : f->get_base_heights()) {
-                for (auto& pt : ring) {
-                    pt += h;
-                }
-            }
-        }
-    }
-}

@@ -138,7 +138,6 @@ void ImportedBuilding::reconstruct() {
     }
 
     //-- Adjust footprints to terrain
-    int count = 0;
     for (int i = 0; i < _footprintPtsIdxList.size(); ++i) {
         for (int j = 0; j < _footprintPtsIdxList[i].size(); ++j) {
             _dPts[_footprintPtsIdxList[i][j]] = Point_3(_dPts[_footprintPtsIdxList[i][j]].x(),

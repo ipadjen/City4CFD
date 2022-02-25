@@ -48,8 +48,7 @@ private:
     void reconstruct_boundaries();
     void average_polygon_points();
     void solve_building_conflicts();
-
-    void extrude_buildings(double h);
+    void translate_building_footprint(double h);
 
     void prep_feature_output();
     void prep_cityjson_output();
@@ -59,6 +58,11 @@ private:
     //-- Templated functions
     template<typename T> void shorten_polygons(T& features);
     template<typename T> void set_footprint_elevation(T& features);
+
+    // Hardcoded reconstruction flags (for now)
+    bool _output_boundary             = false;
+    bool _refine_mesh                 = false;
+    bool _intersect_buildings_terrain = true;
 };
 
 #endif //CITYCFD_MAP3D_H

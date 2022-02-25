@@ -41,6 +41,8 @@ void Terrain::prep_constraints(const PolyFeatures& features, Point_set_3& pointC
     int countFeatures = 0;
     auto is_building_pt = pointCloud.property_map<bool>("is_building_point").first;
     for (auto& f : features) {
+        //todo temp
+//        if (f->get_class() == BUILDING) continue;
         if (!f->is_active()) continue;
         bool is_building = false;
         if (f->get_class() == BUILDING) is_building = true;
@@ -55,13 +57,8 @@ void Terrain::prep_constraints(const PolyFeatures& features, Point_set_3& pointC
                 auto it = pointCloud.insert(Point_3(polyVertex.x(), polyVertex.y(), heights[polyCount][i++]));
                 if (is_building) is_building_pt[*it] = true;
             }
-            //todo temp
-            if (!is_building) {
-                _constrainedPolys.push_back(pts);
-            } else
-            {
-                _constrainedPolys.push_front(pts);
-            }
+            _constrainedPolys.push_back(pts);
+
             ++polyCount;
         }
         ++countFeatures;

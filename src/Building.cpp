@@ -3,6 +3,9 @@
 #include "geomutils.h"
 #include "LoD12.h"
 
+#include <CGAL/Polygon_mesh_processing/remesh.h>
+#include <CGAL/Mesh_3/dihedral_angle_3.h>
+
 Building::Building()
         : PolyFeature(1), _height(-g_largnum) {}
 
@@ -26,6 +29,43 @@ void Building::check_feature_scope(const Polygon_2& otherPoly) {
         }
 //    std::cout << "Poly ID " << this->get_id() << " is outside the influ region. Deactivating." << std::endl;
     this->deactivate();
+}
+
+void Building::refine() {
+    typedef Mesh::Halfedge_index           halfedge_descriptor;
+    typedef Mesh::Edge_index               edge_descriptor;
+
+    double target_edge_length = 5;//5;
+    unsigned int nb_iter =  30;//30;
+
+    //-- Set the property map for constrained edges
+    Mesh::Property_map<edge_descriptor,bool> is_constrained =
+            _mesh.add_property_map<edge_descriptor,bool>("e:is_constrained",false).first;
+
+    //-- Detect sharp features
+    for (auto& e : edges(_mesh)) {
+        halfedge_descriptor hd = halfedge(e,_mesh);
+        if (!is_border(e,_mesh)) {
+            double angle = CGAL::Mesh_3::dihedral_angle(_mesh.point(source(hd,_mesh)),
+                                                        _mesh.point(target(hd,_mesh)),
+                                                        _mesh.point(target(next(hd,_mesh),_mesh)),
+                                                        _mesh.point(target(next(opposite(hd,_mesh),_mesh),_mesh)));
+            if (CGAL::abs(angle)<179.5)
+                is_constrained[e]=true;
+        }
+    }
+
+    PMP::isotropic_remeshing(faces(_mesh), target_edge_length, _mesh,
+                             PMP::parameters::number_of_iterations(nb_iter)
+                                     .edge_is_constrained_map(is_constrained));
+}
+
+void Building::translate_footprint(const double h) {
+    for (auto& ring : _base_heights) {
+        for (auto& pt : ring) {
+            pt += h;
+        }
+    }
 }
 
 double Building::max_dim() {

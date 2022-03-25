@@ -11,7 +11,7 @@ public:
     ~Terrain();
 
     void set_cdt(const Point_set_3 &pointCloud);
-    void prep_constraints(const PolyFeatures& features, Point_set_3& pointCloud);
+    void prep_constraints(const PolyFeatures& features, Point_set_3& pointCloud, const bool costrainBuildings);
     void constrain_features();
     void create_mesh(const PolyFeatures& features);
 

@@ -20,6 +20,7 @@ public:
                                        int>& pointCloudConnectivity) const;
     void  clear_feature();
 
+    virtual const int   get_internal_id() const;
     virtual void        get_cityjson_info(nlohmann::json& b) const = 0;
     virtual void        get_cityjson_semantics(nlohmann::json& g) const = 0;
     virtual std::string get_cityjson_primitive() const = 0;
@@ -30,7 +31,6 @@ public:
     const Polygon_with_holes_2&              get_poly() const;
     std::vector<std::vector<double>>&        get_base_heights();
     const std::vector<std::vector<double>>&  get_base_heights() const;
-    const int                                get_internal_id() const;
 
 protected:
     int                               _polyInternalID;

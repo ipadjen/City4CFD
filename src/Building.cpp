@@ -38,6 +38,8 @@ void Building::refine() {
     double target_edge_length = 5;//5;
     unsigned int nb_iter =  30;//30;
 
+    PMP::remove_self_intersections(_mesh);
+
     //-- Set the property map for constrained edges
     Mesh::Property_map<edge_descriptor,bool> is_constrained =
             _mesh.add_property_map<edge_descriptor,bool>("e:is_constrained",false).first;
@@ -58,6 +60,8 @@ void Building::refine() {
     PMP::isotropic_remeshing(faces(_mesh), target_edge_length, _mesh,
                              PMP::parameters::number_of_iterations(nb_iter)
                                      .edge_is_constrained_map(is_constrained));
+
+//    PMP::remove_self_intersections(_mesh);
 }
 
 void Building::translate_footprint(const double h) {

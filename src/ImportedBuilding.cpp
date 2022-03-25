@@ -4,6 +4,8 @@
 #include "io.h"
 
 #include "CGAL/Polygon_set_2.h"
+#include <CGAL/Polygon_mesh_processing/repair.h>
+#include <CGAL/Polygon_mesh_processing/stitch_borders.h>
 
 ImportedBuilding::ImportedBuilding(nlohmann::json buildingJson, std::vector<Point_3>& importedBuildingPts, const int internalID)
         : Building(internalID), _buildingJson(std::move(buildingJson)), _dPts(importedBuildingPts),
@@ -165,11 +167,13 @@ void ImportedBuilding::reconstruct() {
             polygons.push_back(p);
         }
     }
-    //-- Do mumbo-jumbo to make everything work
+    //-- Turn polygon soup into polygon mesh
     PMP::repair_polygon_soup(points, polygons, CGAL::parameters::geom_traits(geomutils::Array_traits()));
     PMP::orient_polygon_soup(points, polygons);
     PMP::polygon_soup_to_polygon_mesh(points, polygons, _mesh);
     PMP::triangulate_faces(_mesh);
+//    PMP::duplicate_non_manifold_vertices(_mesh);
+    PMP::stitch_borders(_mesh);
 
         /*
         //-- Add other surfaces

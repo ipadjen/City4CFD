@@ -136,6 +136,10 @@ void PolyFeature::average_polygon_inner_points(const Point_set_3& pointCloud,
     }
 }
 
+const int PolyFeature::get_internal_id() const {
+    return _polyInternalID;
+}
+
 void PolyFeature::clear_feature() {
     _base_heights.clear();
     _mesh.clear();
@@ -155,10 +159,6 @@ std::vector<std::vector<double>>& PolyFeature::get_base_heights() {
 
 const std::vector<std::vector<double>>& PolyFeature::get_base_heights() const {
     return _base_heights;
-}
-
-const int PolyFeature::get_internal_id() const {
-    return _polyInternalID;
 }
 
 void PolyFeature::parse_json_poly(const nlohmann::json& poly) {

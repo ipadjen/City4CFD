@@ -36,14 +36,14 @@ void Terrain::set_cdt(const Point_set_3& pointCloud) {
     }
 }
 
-void Terrain::prep_constraints(const PolyFeatures& features, Point_set_3& pointCloud) {
+void Terrain::prep_constraints(const PolyFeatures& features, Point_set_3& pointCloud, const bool constrainBuildings) {
     std::cout << "    Lifting polygon edges to terrain height" << std::endl;
     int countFeatures = 0;
     auto is_building_pt = pointCloud.property_map<bool>("is_building_point").first;
     for (auto& f : features) {
-        //todo temp
-//        if (f->get_class() == BUILDING) continue;
         if (!f->is_active()) continue;
+        if (constrainBuildings)
+            if (f->get_class() == BUILDING) continue;
         bool is_building = false;
         if (f->get_class() == BUILDING) is_building = true;
         int polyCount = 0;

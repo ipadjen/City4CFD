@@ -16,6 +16,10 @@ TopoFeature::~TopoFeature() = default;
 
 int TopoFeature::_numOfOutputLayers = 0;
 
+const int TopoFeature::get_internal_id() const {
+    return -1;
+}
+
 int TopoFeature::get_num_output_layers() {
     return _numOfOutputLayers;
 }

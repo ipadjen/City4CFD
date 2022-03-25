@@ -213,7 +213,7 @@ void Map3d::bnd_sanity_check() {
 void Map3d::reconstruct_terrain() {
     std::cout << "\nReconstructing terrain" << std::endl;
 
-    _terrain->prep_constraints(_lsFeatures, _pointCloud);
+    _terrain->prep_constraints(_lsFeatures, _pointCloud, _constrain_buildings);
     if (!config::averageSurfaces.empty()) this->average_polygon_points();
     _terrain->set_cdt(_pointCloud);
     _terrain->constrain_features();
@@ -226,7 +226,7 @@ void Map3d::reconstruct_buildings() {
     std::cout << "\nReconstructing buildings" << std::endl;
     //-- Extrude building bottoms
     if (_intersect_buildings_terrain)
-        this->translate_building_footprint(-1);
+        this->translate_building_footprint(-5);
 
     if (!_importedBuildings.empty()) {
         std::cout << "    Will try to reconstruct imported buildings in LoD: " << config::importLoD
@@ -259,7 +259,7 @@ void Map3d::reconstruct_buildings() {
 
     this->clear_inactives();
     if (_intersect_buildings_terrain)
-        this->translate_building_footprint(+1);
+        this->translate_building_footprint(+5);
 }
 
 void Map3d::reconstruct_boundaries() {

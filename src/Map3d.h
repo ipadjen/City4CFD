@@ -61,7 +61,8 @@ private:
 
     // Hardcoded reconstruction flags (for now)
     bool _output_boundary             = false;
-    bool _refine_mesh                 = false;
+    bool _refine_mesh                 = true;
+    bool _constrain_buildings         = false;
     bool _intersect_buildings_terrain = true;
 };
 

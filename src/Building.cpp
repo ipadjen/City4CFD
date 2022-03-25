@@ -38,7 +38,10 @@ void Building::refine() {
     double target_edge_length = 5;//5;
     unsigned int nb_iter =  30;//30;
 
-    PMP::remove_self_intersections(_mesh);
+    if (PMP::does_self_intersect(_mesh)) {
+        ++config::selfIntersecting;
+        PMP::remove_self_intersections(_mesh);
+    }
 
     //-- Set the property map for constrained edges
     Mesh::Property_map<edge_descriptor,bool> is_constrained =

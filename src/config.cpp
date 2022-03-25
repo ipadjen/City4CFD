@@ -38,6 +38,7 @@ namespace config {
     //- Buildings
     std::string lod;
     double      buildingPercentile;
+    int         selfIntersecting = 0;
     //- Imported buildings
     bool        importAdvantage;
     bool        importTrueHeight;

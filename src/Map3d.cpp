@@ -256,6 +256,12 @@ void Map3d::reconstruct_buildings() {
     }
     config::logSummary << "BUILDING RECONSTRUCTION SUMMARY: TOTAL FAILED RECONSTRUCTIONS: "
                        << failed << std::endl;
+    if (config::selfIntersecting > 0) {
+        std::cout << "      WARNING: Self-intersecting geometries found! Topology of self-intersecting geometries will change."
+                  << std::endl;
+        config::logSummary << "BUILDING RECONSTRUCTION SUMMARY: TOTAL SELF INTERSECTIONS: "
+                           << config::selfIntersecting << std::endl;
+    }
 
     this->clear_inactives();
     if (_intersect_buildings_terrain)

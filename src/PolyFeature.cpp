@@ -162,7 +162,7 @@ const std::vector<std::vector<double>>& PolyFeature::get_base_heights() const {
 }
 
 void PolyFeature::parse_json_poly(const nlohmann::json& poly) {
-    for (auto& polyEdges : poly) {
+    for (auto& polyEdges : poly["geometry"]["coordinates"]) {
         Polygon_2 tempPoly;
         for (auto& coords : polyEdges) {
             tempPoly.push_back(Point_2(coords[0], coords[1]));

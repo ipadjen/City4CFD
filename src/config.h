@@ -57,7 +57,6 @@ namespace config {
     extern std::string    buildingUniqueId;
     extern std::string    lod;
     extern double         buildingPercentile;
-    extern int            selfIntersecting;
     // Attributes
     extern std::string    buildingHeightAttribute;
     extern std::string    floorAttribute;

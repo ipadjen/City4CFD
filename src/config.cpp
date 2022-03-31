@@ -60,7 +60,6 @@ namespace config {
     std::string buildingUniqueId;
     std::string lod;
     double      buildingPercentile;
-    int         selfIntersecting = 0;
     // Height from attributes
     std::string buildingHeightAttribute;
     std::string floorAttribute;

@@ -24,8 +24,9 @@
 #include "geomutils.h"
 #include "LoD12.h"
 
-#include <CGAL/Polygon_mesh_processing/remesh.h>
 #include <CGAL/Mesh_3/dihedral_angle_3.h>
+#include <CGAL/Polygon_mesh_processing/remesh.h>
+#include <CGAL/Polygon_mesh_processing/repair.h>
 
 Building::Building()
         : PolyFeature(1), _height(-g_largnum) {}
@@ -59,10 +60,13 @@ void Building::refine() {
     double target_edge_length = 5;//5;
     unsigned int nb_iter =  30;//30;
 
+    PMP::remove_degenerate_faces(_mesh);
+    /*
     if (PMP::does_self_intersect(_mesh)) {
         ++config::selfIntersecting;
         PMP::remove_self_intersections(_mesh);
     }
+     */
 
     //-- Set the property map for constrained edges
     Mesh::Property_map<edge_descriptor,bool> is_constrained =

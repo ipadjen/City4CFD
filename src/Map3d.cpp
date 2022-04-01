@@ -56,7 +56,7 @@ void Map3d::reconstruct() {
     } else {
         //-- First the buildings are reconstructed
         //- Prepare polygons for buildings
-        this->shorten_polygons(_buildings);
+//        this->shorten_polygons(_buildings); // no need for LBM
 
         //- Find building footprint elevation using smoothed DT
         this->set_footprint_elevation(_buildings);
@@ -515,7 +515,7 @@ void Map3d::clear_inactives() {
 template<typename T>
 void Map3d::shorten_polygons(T& feature) {
     for (auto& f : feature) {
-        if (!f->is_active() || f->is_imported()) continue;
+        if (!f->is_active() || f->is_imported() || f->get_class() == BUILDING) continue;
         for (auto& ring : f->get_poly().rings()) {
             geomutils::shorten_long_poly_edges(ring);
         }

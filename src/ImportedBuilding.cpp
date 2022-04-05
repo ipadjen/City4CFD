@@ -174,10 +174,12 @@ void ImportedBuilding::reconstruct() {
     std::vector<CGAL_Polygon> polygons;
     int surfIdx = -1;
     for (auto& faces : geometry["boundaries"].front()) {
+        /*
         //-- Remove bottom surface
         ++surfIdx;
         if (std::find(_footprintIdxList.begin(), _footprintIdxList.end(), surfIdx) != _footprintIdxList.end())
             continue;
+        */
 
         for (auto& faceLst : faces) {
             CGAL_Polygon p;

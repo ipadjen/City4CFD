@@ -183,10 +183,10 @@ void IO::output_obj(const OutputFeatures& allFeatures) {
     for (auto& f : allFeatures) {
         if (Config::get().outputSeparately) {
             if (f->get_class() == BUILDING) {
-                if (f->get_id().empty()) {
-                    bs[f->get_output_layer_id()] += "\no " + std::to_string(count);
+                if (f->get_id().empty() || boost::iequals(f->get_id(), "null")) {
+                    bs[f->get_output_layer_id()] += "\ng Buildings";
                 } else {
-                    bs[f->get_output_layer_id()] += "\no " + f->get_id();
+                    bs[f->get_output_layer_id()] += "\ng " + f->get_id();
                 }
                 ++count;
             }
@@ -212,7 +212,11 @@ void IO::output_obj(const OutputFeatures& allFeatures) {
             of.emplace_back();
             of.back().open(Config::get().outputFileName + "_" + Config::get().outputSurfaces[i] + ".obj");
         }
-        of.back() << fs[i] << "\ng " << Config::get().outputSurfaces[i] << bs[i];
+        if (Config::get().outputSeparately) {
+            of.back() << fs[i] << bs[i];
+        } else {
+            of.back() << fs[i] << "\ng " << Config::get().outputSurfaces[i] << bs[i];
+        }
     }
     for (auto& f : of) f.close();
 }

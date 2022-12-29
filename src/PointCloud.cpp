@@ -135,7 +135,6 @@ void PointCloud::set_flat_terrain() {
     _pointCloudTerrain.add_property_map<bool> ("is_building_point", false);
 }
 
-//todo probably should move to terrain
 void PointCloud::flatten_polygon_pts(const PolyFeaturesPtr& lsFeatures,
                                      std::vector<EPECK::Segment_3>& constrainedEdges) {
     std::cout << "\n    Flattening surfaces" << std::endl;
@@ -165,13 +164,58 @@ void PointCloud::flatten_polygon_pts(const PolyFeaturesPtr& lsFeatures,
 
     //-- Perform averaging
     PolyFeaturesPtr avgFeatures;
+    std::list<CGAL::Polygon_with_holes_2<EPECK>> avgPolys;
+    int outputlayerid;
     for (auto& f : lsFeatures) {
         auto ita = Config::get().flattenSurfaces.find(f->get_output_layer_id());
         if (ita != Config::get().flattenSurfaces.end()) {
-            f->flatten_polygon_inner_points(_pointCloudTerrain, flattenedPts, searchTree, pointCloudConnectivity);
-            if (f->is_flat()) avgFeatures.push_back(f);
+            //todo temp
+            f->mark_flat();
+            avgPolys.push_back(f->get_poly().get_exact());
+            outputlayerid = f->get_output_layer_id();
+//            if (this->flatten_polygon_inner_points(_pointCloudTerrain, flattenedPts, searchTree,
+//                                            pointCloudConnectivity, f->get_poly(), f->get_output_layer_id()))
+//            avgFeatures.push_back(f);
+//            f->flatten_polygon_inner_points(_pointCloudTerrain, flattenedPts, searchTree, pointCloudConnectivity);
+//            if (f->is_flat()) avgFeatures.push_back(f);
         }
     }
+    //-- Handle adjacencies
+    // traverse over all polygons and try to merge
+    auto itOuter = avgPolys.begin();
+    while (itOuter != avgPolys.end()) {
+        auto itInner = avgPolys.begin();
+        if (itOuter == itInner) {
+            ++itOuter;
+            continue;
+        }
+        CGAL::Polygon_with_holes_2<EPECK> unionR;
+        if (CGAL::join(*itOuter, *itInner, unionR)) {
+            (*itOuter) = unionR;
+            avgPolys.erase(itInner);
+        } else ++itInner;
+        ++itOuter;
+    }
+    // grab edges of new polygons
+    Converter<EPECK, EPICK> to_inexact;
+    for (auto& poly : avgPolys) {
+        Polygon_2 ring;
+        for (auto& pt : poly.outer_boundary()) ring.push_back(Point_2(to_inexact(pt.x()), to_inexact(pt.y())));
+        std::vector<double> elevations;
+        geomutils::interpolate_poly_from_pc(ring, elevations, _pointCloudTerrain);
+        Polygon_3 constrainRing;
+        for (auto i = 0; i < ring.size() - 1; ++i) {
+            auto pt1 = ePoint_3(ring[i].x(), ring[i].y(), elevations[i]);
+            auto pt2 = ePoint_3(ring[i + 1].x(), ring[i + 1].y(), elevations[i + 1]);
+            constrainedEdges.emplace_back(pt1, pt2);
+        }
+    }
+    // flatten points
+    for (auto& poly : avgPolys) {
+        this->flatten_polygon_inner_points(_pointCloudTerrain, flattenedPts, searchTree,
+                                           pointCloudConnectivity, poly, outputlayerid);
+    }
+
     //-- Handle border for flattened polys
     this->buffer_flat_edges(avgFeatures, constrainedEdges);
 
@@ -188,6 +232,58 @@ void PointCloud::flatten_polygon_pts(const PolyFeaturesPtr& lsFeatures,
         }
     }
     _pointCloudTerrain.collect_garbage();
+}
+
+bool PointCloud::flatten_polygon_inner_points(const Point_set_3& pointCloud,
+                                               std::map<int, Point_3>& flattenedPts,
+                                               const SearchTree& searchTree,
+                                               const std::unordered_map<Point_3, int>& pointCloudConnectivity,
+                                               const CGAL::Polygon_with_holes_2<EPECK>& _poly,
+                                               const int outputLayerID) {
+    std::vector<int>    indices;
+    std::vector<double> originalHeights;
+    auto is_building_pt = pointCloud.property_map<bool>("is_building_point").first;
+    //-- Take tree subset bounded by the polygon
+    std::vector<Point_3> subsetPts;
+//    Polygon_2 bbox = geomutils::calc_bbox_poly(_poly.rings().front());
+    auto bbox = _poly.bbox();
+    Point_2 bbox1(bbox.xmin(), bbox.ymin());
+    Point_2 bbox2(bbox.xmax(), bbox.ymax());
+    Fuzzy_iso_box pts_range(bbox1, bbox2);
+    searchTree.search(std::back_inserter(subsetPts), pts_range);
+
+    //-- Collect points that have not been already flattened
+    for (auto& pt3 : subsetPts) {
+        ePoint_2 pt(pt3.x(), pt3.y());
+        if (CGAL::bounded_side_2(_poly.outer_boundary().begin(),
+                                 _poly.outer_boundary().end(),
+                                 pt) != CGAL::ON_UNBOUNDED_SIDE) {
+            auto itIdx = pointCloudConnectivity.find(pt3);
+
+            auto pointSetIt = pointCloud.begin();
+            std::advance(pointSetIt, itIdx->second);
+            if (is_building_pt[*pointSetIt])
+                return false; //todo temp solution when having adjacent buildings
+
+            auto it = flattenedPts.find(itIdx->second);
+            if (it == flattenedPts.end()) {
+                indices.push_back(itIdx->second);
+                originalHeights.push_back(pointCloud.point(itIdx->second).z());
+            }
+        }
+    }
+    //-- Flatten surface points
+    if (indices.empty()) {
+        return false;
+    }
+    double avgHeight = geomutils::percentile(originalHeights,
+                                             Config::get().flattenSurfaces[outputLayerID] / 100);
+
+    //-- Add new points to the temp map
+    for (auto& i : indices) {
+        flattenedPts[i] = Point_3(pointCloud.point(i).x(), pointCloud.point(i).y(), avgHeight);
+    }
+    return true;
 }
 
 void PointCloud::buffer_flat_edges(const PolyFeaturesPtr& avgFeatures,

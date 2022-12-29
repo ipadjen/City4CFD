@@ -61,6 +61,7 @@ public:
     virtual TopoClass   get_class() const = 0;
     virtual std::string get_class_name() const = 0;
 
+    void                                     mark_flat();
     bool                                     is_flat() const;
     Polygon_with_holes_2&                    get_poly();
     const Polygon_with_holes_2&              get_poly() const;

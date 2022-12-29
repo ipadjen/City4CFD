@@ -67,6 +67,7 @@ void Terrain::prep_constraints(const PolyFeaturesPtr& features, Point_set_3& poi
     auto is_building_pt = pointCloud.property_map<bool>("is_building_point").first;
     for (auto& f : features) {
         if (!f->is_active()) continue;
+        if (f->is_flat()) continue; // skip flat polygons, their edges are explicitly added
         bool is_building = false;
         if (f->get_class() == BUILDING) is_building = true;
         int polyCount = 0;
@@ -100,7 +101,7 @@ void Terrain::constrain_features() {
         ++count;
     }
     IO::print_progress_bar(100); std::clog << std::endl;
-    // extra edges to constrain when whole polygons couldn't be added
+    // extra edges to constrain when whole polygons shouldn't be added
     if (!_extraConstrainedEdges.empty()) std::cout << "\n    Adding extra constrained edges" << std::endl;
     for (auto& extraEdge : _extraConstrainedEdges) {
         _cdt.insert_constraint(extraEdge.source(), extraEdge.target());

@@ -44,6 +44,11 @@ public:
     void set_flat_terrain();
     void smooth_terrain();
     void flatten_polygon_pts(const PolyFeaturesPtr& lsFeatures, std::vector<EPECK::Segment_3>& constrainedEdges);
+    bool   flatten_polygon_inner_points(const Point_set_3& pointCloud, std::map<int, Point_3>& flattenedPts,
+                                        const SearchTree& searchTree, const std::unordered_map<Point_3,
+                                        int>& pointCloudConnectivity,
+                                        const CGAL::Polygon_with_holes_2<EPECK>& _poly,
+                                        const int outputLayerID);
     void buffer_flat_edges(const PolyFeaturesPtr& avgFeatures, std::vector<EPECK::Segment_3>& constrainedEdges);
     void read_point_clouds();
 

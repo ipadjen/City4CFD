@@ -260,6 +260,10 @@ MinBbox& PolyFeature::get_min_bbox() {
     return _minBbox;
 }
 
+void PolyFeature::mark_flat() {
+    _flatPoly = true;
+}
+
 bool PolyFeature::is_flat() const {
     return _flatPoly;
 }

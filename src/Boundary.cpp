@@ -91,7 +91,9 @@ void Boundary::set_bounds_to_terrain_pc(Point_set_3& pointCloud, const Polygon_2
 
     std::vector<double> bndHeights;
     geomutils::interpolate_poly_from_pc(bndPoly, bndHeights, pointCloud);
-    _outerBndHeight = geomutils::avg(bndHeights); // Height for buffer (for now) - average of outer pts
+//    _outerBndHeight = geomutils::avg(bndHeights); // Height for buffer (for now) - average of outer pts
+    //todo temp- harcoded alternative: use the lowest point
+    _outerBndHeight = geomutils::percentile(bndHeights, 0.);
     Config::get().logSummary << "Domain edge elevation: " << _outerBndHeight << std::endl;
 
     if (Config::get().domainBuffer > -global::largnum + global::smallnum) {

@@ -334,14 +334,8 @@ void IO::output_obj(const OutputFeaturesPtr& allFeatures) {
     int count = 0; // to output each building as a separate group
     for (auto& f : allFeatures) {
         if (Config::get().outputSeparately) {
-            if (f->get_class() == BUILDING) {
-                if (f->get_id().empty() || boost::iequals(f->get_id(), "null")) {
-                    bs[f->get_output_layer_id()] += "\ng Buildings";
-                } else {
-                    bs[f->get_output_layer_id()] += "\ng " + f->get_id();
-                }
-                ++count;
-            }
+            if (f->get_class() == BUILDING)
+                bs[f->get_output_layer_id()] += "\no " + std::to_string(count++);
             IO::get_obj_pts(f->get_mesh(),
                             fs[f->get_output_layer_id()],
                             bs[f->get_output_layer_id()],

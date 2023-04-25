@@ -1,7 +1,7 @@
 /*
   City4CFD
  
-  Copyright (c) 2021-2022, 3D Geoinformation Research Group, TU Delft  
+  Copyright (c) 2021-2023, 3D Geoinformation Research Group, TU Delft
 
   This file is part of City4CFD.
 
@@ -40,38 +40,44 @@ public:
 
     void reconstruct();
 
+    BuildingsPtr get_failed_buildings() const;
+
     void read_data();
     void output();
 
 private:
     PointCloud                  _pointCloud;
-    JsonVector                  _polygonsBuildings;
-    JsonVector                  _importedBuildingsJSON;
-    std::vector<JsonVector>     _polygonsSurfaceLayers;
-    Point3VectorPtr             _importedBuildingsPts;
+//    JsonVectorPtr               _polygonsBuildings;     // for json-only reader
+    PolyVecPtr                  _polygonsBuildings;
+    JsonVectorPtr               _importedBuildingsJSON;
+//    std::vector<JsonVectorPtr>  _polygonsSurfaceLayers; // for json-only reader
+    std::vector<PolyVecPtr>     _polygonsSurfaceLayers;
+    PointSet3Ptr                _importedBuildingsPts;
     std::vector<Mesh>           _importedBuildingsOther;
 
-    Terrainptr                  _terrain;
-    Buildings                   _buildings;
-    ReconstructedBuildings      _reconstructedBuildings;
-    ImportedBuildings           _importedBuildings;
-    SurfaceLayers               _surfaceLayers;
-    Boundaries                  _boundaries;
-    PolyFeatures                _lsFeatures;
-    OutputFeatures              _outputFeatures;
+    TerrainPtr                  _terrainPtr;
+    BuildingsPtr                _buildingsPtr;
+    ReconstructedBuildingsPtr   _reconstructedBuildingsPtr;
+    ImportedBuildingsPtr        _importedBuildingsPtr;
+    SurfaceLayersPtr            _surfaceLayersPtr;
+    BoundariesPtr               _boundariesPtr;
+    PolyFeaturesPtr             _allFeaturesPtr;
+    OutputFeaturesPtr           _outputFeaturesPtr;
 
     BoundingRegion              _influRegion;
     BoundingRegion              _domainBnd;
     DT                          _dt;
 
     bool                        _influRegionBPG = false;
-    bool                        _bndBPG = false;
-    bool                        _cityjsonInput = false;
+    bool                        _bndBPG         = false;
+    bool                        _cityjsonInput  = false;
 
     void set_features();
     void set_influ_region();
     void set_bnd();
     void bnd_sanity_check();
+    void add_building_pts();
+    void remove_extra_terrain_pts();
     void reconstruct_terrain();
     void reconstruct_buildings();
     void reconstruct_boundaries();

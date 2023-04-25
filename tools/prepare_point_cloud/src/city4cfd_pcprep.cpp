@@ -1,7 +1,7 @@
 /*
   City4CFD
  
-  Copyright (c) 2021-2022, 3D Geoinformation Research Group, TU Delft  
+  Copyright (c) 2021-2023, 3D Geoinformation Research Group, TU Delft
 
   This file is part of City4CFD.
 
@@ -81,7 +81,7 @@ void printWelcome() {
 )"
     };
     std::cout << logo;
-    std::cout << "City4CFD Copyright (C) 2021-2022 3D Geoinformation Research Group, TU Delft\n" << std::endl;
+    std::cout << "City4CFD Copyright (C) 2021-2023 3D Geoinformation Research Group, TU Delft\n" << std::endl;
     std::cout << info;
 }
 
@@ -171,7 +171,7 @@ int main(int argc, char** argv) {
             LASheader header = lasreader->header;
 
             //-- read each point 1-by-1
-            uint32_t pointCount = header.number_of_point_records;
+            uint64_t pointCount = header.number_of_point_records;
 
             std::vector<Point> pts;
 
@@ -241,8 +241,8 @@ int main(int argc, char** argv) {
                 CSF csf;
                 //-- Hardcoded CSF parameters
                 csf.params.bSloopSmooth = true;
-                csf.params.class_threshold = 0.5;
-                csf.params.cloth_resolution = 2;
+                csf.params.class_threshold = 0.5; //1
+                csf.params.cloth_resolution = 2;  //3
                 csf.params.interations = 500;
                 csf.params.rigidness = 3;
                 csf.params.time_step = 0.65;

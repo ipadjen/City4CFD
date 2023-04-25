@@ -1,7 +1,7 @@
 /*
   City4CFD
  
-  Copyright (c) 2021-2022, 3D Geoinformation Research Group, TU Delft  
+  Copyright (c) 2021-2023, 3D Geoinformation Research Group, TU Delft
 
   This file is part of City4CFD.
 
@@ -36,6 +36,8 @@ public:
     SurfaceLayer(const int outputLayerID);
     SurfaceLayer(const nlohmann::json& poly);
     SurfaceLayer(const nlohmann::json& poly, const int outputLayerID);
+    SurfaceLayer(const Polygon_with_attr& poly);
+    SurfaceLayer(const Polygon_with_attr& poly, const int outputLayerID);
     ~SurfaceLayer();
 
     void check_feature_scope(const Polygon_2& bndPoly);

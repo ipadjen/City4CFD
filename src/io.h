@@ -1,7 +1,7 @@
 /*
   City4CFD
  
-  Copyright (c) 2021-2022, 3D Geoinformation Research Group, TU Delft  
+  Copyright (c) 2021-2023, 3D Geoinformation Research Group, TU Delft
 
   This file is part of City4CFD.
 
@@ -35,16 +35,18 @@ namespace IO {
     //-- Input functions
     void read_config(std::string& config_path);
     bool read_point_cloud(std::string& file, Point_set_3& pc);
-    void read_geojson_polygons(std::string& file, JsonVector& jsonPolygons);
-    void read_cityjson_geometries(std::string& file, JsonVector& importedBuildings, Point3VectorPtr& importedBuildingPts);
+    void read_geojson_polygons(std::string& file, JsonVectorPtr& jsonPolygons);
+    void read_polygons(std::string& file, PolyVecPtr& polygons, std::string* crsInfo);
+    void read_cityjson_geometries(std::string& file, JsonVectorPtr& importedBuildings,
+                                  PointSet3Ptr& importedBuildingPts);
     void read_other_geometries(std::string& file, std::vector<Mesh>& meshes);
 
     //-- Output functions
     void print_progress_bar(int percent);
 
-    void output_obj(const OutputFeatures& allFeatures);
-    void output_stl(const OutputFeatures& allFeatures);
-    void output_cityjson(const OutputFeatures& allFeatures);
+    void output_obj(const OutputFeaturesPtr& allFeatures);
+    void output_stl(const OutputFeaturesPtr& allFeatures);
+    void output_cityjson(const OutputFeaturesPtr& allFeatures);
 
     void get_obj_pts(const Mesh& mesh, std::string& fs, std::string& bs, std::unordered_map<std::string, int>& dPts);
     void get_stl_pts(Mesh& mesh, std::string& fs);
@@ -54,6 +56,7 @@ namespace IO {
     bool is_degen(const Mesh& mesh, Mesh::Face_index face);
 
     void output_log();
+    void output_log(const BuildingsPtr failedBuildings);
     bool has_substr(const std::string& strMain, const std::string& subStr);
 
     std::string gen_key_bucket(const Point_2 p);

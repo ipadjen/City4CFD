@@ -1,7 +1,7 @@
 /*
   City4CFD
  
-  Copyright (c) 2021-2022, 3D Geoinformation Research Group, TU Delft  
+  Copyright (c) 2021-2023, 3D Geoinformation Research Group, TU Delft
 
   This file is part of City4CFD.
 
@@ -37,23 +37,28 @@ public:
     Building(const int internalID);
     Building(const nlohmann::json& poly);
     Building(const nlohmann::json& poly, const int internalID);
+    Building(const Polygon_with_attr& poly);
+    Building(const Polygon_with_attr& poly, const int internalID);
     ~Building();
 
-    static void alpha_wrap(const Buildings& buildings, Mesh& newMesh);
+    static void alpha_wrap(const BuildingsPtr& buildings, Mesh& newMesh);
 
-    virtual void reconstruct() = 0;
-    virtual void reconstruct_flat_terrain() = 0;
+    virtual double get_elevation() = 0;
+    virtual void   reconstruct() = 0;
+    virtual void   reconstruct_flat_terrain() = 0;
 
-    void   clip_bottom(const Terrainptr& terrain);
+    double get_height();
+    void   insert_point(const Point_3& pt);
+    void   clip_bottom(const TerrainPtr& terrain);
     void   refine();
     void   translate_footprint(const double h);
     void   check_feature_scope(const Polygon_2& influRegion);
     void   set_clip_flag (const bool flag);
+    void   mark_as_failed();
+    bool   has_failed_to_reconstruct() const;
     bool   has_self_intersections() const;
     void   set_to_zero_terrain();
     double sq_max_dim();
-
-    double get_height() const;
 
     virtual void        get_cityjson_info(nlohmann::json& b) const override;
     virtual void        get_cityjson_semantics(nlohmann::json& g) const override;
@@ -62,8 +67,11 @@ public:
     virtual std::string get_class_name() const override;
 
 protected:
-    double _height;
-    bool   _clip_bottom = Config::get().clip;
+    PointSet3Ptr         _ptsPtr;
+    double               _elevation;
+    double               _height;
+    bool                 _hasFailed;
+    bool                 _clip_bottom = Config::get().clip;
 };
 
 //-- Struct for clipping

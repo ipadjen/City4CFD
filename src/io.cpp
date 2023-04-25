@@ -1,7 +1,7 @@
 /*
   City4CFD
  
-  Copyright (c) 2021-2022, 3D Geoinformation Research Group, TU Delft  
+  Copyright (c) 2021-2023, 3D Geoinformation Research Group, TU Delft
 
   This file is part of City4CFD.
 
@@ -30,11 +30,17 @@
 #include "Config.h"
 #include "TopoFeature.h"
 #include "Boundary.h"
+#include "Building.h"
 
-#include <CGAL/Polygon_mesh_processing/IO/polygon_mesh_io.h>
+#include <CGAL/Polygon_mesh_processing/compute_normal.h>
 #include <CGAL/Polygon_mesh_processing/connected_components.h>
 #include <CGAL/Polygon_mesh_processing/transform.h>
+#include <CGAL/Polygon_mesh_processing/IO/polygon_mesh_io.h>
 #include <CGAL/IO/read_las_points.h>
+
+#include <ogrsf_frmts.h>
+
+#include <boost/algorithm/string.hpp>
 
 //-- Input functions
 void IO::read_config(std::string& config_path) {
@@ -84,12 +90,12 @@ bool IO::read_point_cloud(std::string& file, Point_set_3& pc) {
     return true;
 }
 
-void IO::read_geojson_polygons(std::string& file, JsonVector& jsonPolygons) {
+void IO::read_geojson_polygons(std::string& file, JsonVectorPtr& jsonPolygons) {
     try {
         std::ifstream ifs(file);
         nlohmann::json j = nlohmann::json::parse(ifs);
 
-        int count;
+//        int count = 0;
         for (auto& feature : j["features"]) {
             if (feature["geometry"]["type"] == "Polygon") {
                 jsonPolygons.emplace_back(std::make_unique<nlohmann::json>(feature));
@@ -105,11 +111,155 @@ void IO::read_geojson_polygons(std::string& file, JsonVector& jsonPolygons) {
 //                std::cout << "In file '" << file << "' cannot parse geometry type "
 //                          << feature["geometry"]["type"] << ". Object ID: " << count << std::endl;
             }
-            ++count;
+//            ++count;
         }
     } catch (std::exception& e) {
         throw std::runtime_error(std::string("Error parsing JSON file '" + file + "'. Details: " + e.what()));
     }
+}
+
+void IO::read_polygons(std::string& file, PolyVecPtr& polygons, std::string* crsInfo) {
+    // Prepare input map
+    GDALAllRegister();
+    GDALDataset *inputMapDataset = (GDALDataset*) GDALOpenEx(file.c_str(), GDAL_OF_READONLY, NULL, NULL, NULL);
+    if (inputMapDataset == NULL) {
+        throw std::runtime_error("Error: Could not open input polygon");
+    }
+    std::cout << "GDAL: Reading polygon file: " << file << " type: " << inputMapDataset->GetDriverName() << std::endl;
+
+    CPLStringList metadataDomains(inputMapDataset->GetMetadataDomainList());
+    for (int currentDomain = 0; currentDomain < metadataDomains.Count(); ++currentDomain) {
+        //    std::cout << metadataDomains[currentDomain] << std::endl;
+    }
+
+    // Load map polygons
+    //todo maybe a warning when there are multiple layers?
+    for (auto &&inputLayer: inputMapDataset->GetLayers()) {
+        inputLayer->ResetReading();
+
+        // Try to extract CRS from this layer
+        OGRSpatialReference *spatialRef = inputLayer->GetSpatialRef();
+        if (spatialRef != NULL) {
+            std::string crsAuthority, crsCode;
+            //      char *srs = (char *)CPLMalloc(10000*sizeof(char));
+            //      spatialRef->exportToPrettyWkt(&srs);
+            //      std::cout << srs << std::endl;
+            //      CPLFree(srs);
+            const char *authority = spatialRef->GetAuthorityName(NULL);
+            const char *code = spatialRef->GetAuthorityCode(NULL);
+            if (authority != NULL) crsAuthority = std::string(authority);
+            if (code != NULL) crsCode = std::string(code);
+            if (crsInfo) *crsInfo += crsAuthority + "::" + crsCode;
+            std::cout << "    CRS information: " << authority << " code: " << code << std::endl;
+        }
+
+        OGRFeature *inputFeature;
+        while ((inputFeature = inputLayer->GetNextFeature()) != NULL) {
+            if (!inputFeature->GetGeometryRef()) continue;
+//            std::string cityjson_class;
+            std::unordered_map<std::string, std::string> attributes;
+
+            for (int currentField = 0; currentField < inputFeature->GetFieldCount(); ++currentField) {
+//                if (strcmp(inputFeature->GetFieldDefnRef(currentField)->GetNameRef(), class_attribute.c_str()) == 0) {
+//                    cityjson_class = inputFeature->GetFieldAsString(class_attribute.c_str());
+//                    continue;
+//                }
+                if (inputFeature->IsFieldNull(currentField)) continue;
+                switch (inputFeature->GetFieldDefnRef(currentField)->GetType()) {
+                    case OFTReal:
+                        attributes[inputFeature->GetFieldDefnRef(currentField)->GetNameRef()]
+                                = std::to_string(inputFeature->GetFieldAsDouble(currentField));
+                        break;
+                    case OFTString:
+                        attributes[inputFeature->GetFieldDefnRef(currentField)->GetNameRef()]
+                                = inputFeature->GetFieldAsString(currentField);
+                        break;
+                    case OFTInteger:
+                        attributes[inputFeature->GetFieldDefnRef(currentField)->GetNameRef()]
+                                = std::to_string(inputFeature->GetFieldAsInteger(currentField));
+                        break;
+                    case OFTInteger64:
+                        attributes[inputFeature->GetFieldDefnRef(currentField)->GetNameRef()]
+                                = std::to_string(inputFeature->GetFieldAsInteger64(currentField));
+                        break;
+                    default:
+//                        std::cout << "Unsupported field type: " << inputFeature->GetFieldDefnRef(currentField)->GetType() << std::endl;
+                        break;
+                }
+            }
+
+            if (wkbFlatten(inputFeature->GetGeometryRef()->getGeometryType()) == wkbPolygon ||
+                wkbFlatten(inputFeature->GetGeometryRef()->getGeometryType()) == wkbTriangle) {
+                OGRPolygon *inputPolygon = inputFeature->GetGeometryRef()->toPolygon();
+                polygons.emplace_back(std::make_unique<Polygon_with_attr>());
+//                polygons.back()->id = std::to_string(inputFeature->GetFID());
+//                polygons.back().semantic_class = cityjson_class;
+                polygons.back()->attributes = attributes;
+                polygons.back()->polygon.rings().emplace_back();
+                for (int currentVertex = 0;
+                     currentVertex < inputPolygon->getExteriorRing()->getNumPoints();
+                     ++currentVertex) {
+                    polygons.back()->polygon.rings().back()
+                            .push_back(Point_2(inputPolygon->getExteriorRing()->getX(currentVertex)
+                                               - Config::get().pointOfInterest.x(),
+                                               inputPolygon->getExteriorRing()->getY(currentVertex)
+                                               - Config::get().pointOfInterest.y()));
+                }
+                for (int currentInnerRing = 0;
+                     currentInnerRing < inputPolygon->getNumInteriorRings();
+                     ++currentInnerRing) {
+                    polygons.back()->polygon.rings().emplace_back();
+                    for (int currentVertex = 0;
+                         currentVertex < inputPolygon->getInteriorRing(currentInnerRing)->getNumPoints();
+                         ++currentVertex) {
+                        polygons.back()->polygon.rings().back()
+                                .push_back(Point_2(inputPolygon->getInteriorRing(currentInnerRing)->getX(currentVertex)
+                                                   - Config::get().pointOfInterest.x(),
+                                                   inputPolygon->getInteriorRing(currentInnerRing)->getY(currentVertex)
+                                                   - Config::get().pointOfInterest.y()));
+                    }
+                }
+            } else if (wkbFlatten(inputFeature->GetGeometryRef()->getGeometryType()) == wkbMultiPolygon) {
+                OGRMultiPolygon *inputMultipolygon = inputFeature->GetGeometryRef()->toMultiPolygon();
+                for (int currentPolygon = 0;
+                     currentPolygon < inputMultipolygon->getNumGeometries();
+                     ++currentPolygon) {
+                    OGRPolygon *inputPolygon = inputMultipolygon->getGeometryRef(currentPolygon);
+                    polygons.push_back(std::make_unique<Polygon_with_attr>());
+//                    polygons.back()->id = std::to_string(inputFeature->GetFID()) + "-" + std::to_string(currentPolygon);
+//                    polygons.back().semantic_class = cityjson_class;
+                    polygons.back()->attributes = attributes;
+                    polygons.back()->polygon.rings().emplace_back();
+                    for (int currentVertex = 0;
+                         currentVertex < inputPolygon->getExteriorRing()->getNumPoints();
+                         ++currentVertex) {
+                        polygons.back()->polygon.rings().back()
+                                .push_back(Point_2(inputPolygon->getExteriorRing()->getX(currentVertex)
+                                                   - Config::get().pointOfInterest.x(),
+                                                   inputPolygon->getExteriorRing()->getY(currentVertex)
+                                                   - Config::get().pointOfInterest.y()));
+                    }
+                    for (int currentInnerRing = 0;
+                         currentInnerRing < inputPolygon->getNumInteriorRings();
+                         ++currentInnerRing) {
+                        polygons.back()->polygon.rings().emplace_back();
+                        for (int currentVertex = 0;
+                             currentVertex < inputPolygon->getInteriorRing(currentInnerRing)->getNumPoints();
+                             ++currentVertex) {
+                            polygons.back()->polygon.rings().back()
+                                    .push_back(Point_2(inputPolygon->getInteriorRing(currentInnerRing)->getX(currentVertex)
+                                                       - Config::get().pointOfInterest.x(),
+                                                       inputPolygon->getInteriorRing(currentInnerRing)->getY(currentVertex)
+                                                       - Config::get().pointOfInterest.y()));
+                        }
+                    }
+                }
+            } else {
+                //        std::cout << "Ignoring non-areal type..." << std::endl;
+            }
+        }
+    }
+    GDALClose(inputMapDataset);
 }
 
 void IO::read_other_geometries(std::string& file, std::vector<Mesh>& meshes) {
@@ -128,18 +278,20 @@ void IO::read_other_geometries(std::string& file, std::vector<Mesh>& meshes) {
     PMP::split_connected_components(mesh, meshes);
 }
 
-void IO::read_cityjson_geometries(std::string& file, JsonVector& importedBuildings,
-                                  Point3VectorPtr& importedBuildingPts) {
+void IO::read_cityjson_geometries(std::string& file, JsonVectorPtr& importedBuildings,
+                                  PointSet3Ptr& importedBuildingPts) {
     try {
         std::ifstream ifs(file);
         nlohmann::json j = nlohmann::json::parse(ifs);
 
         //-- Add vertices
         for (auto& pt : j["vertices"]) {
-            double ptx = ((double)pt[0] * (double)j["transform"]["scale"][0]) + (double)j["transform"]["translate"][0] - Config::get().pointOfInterest.x();
-            double pty = ((double)pt[1] * (double)j["transform"]["scale"][1]) + (double)j["transform"]["translate"][1] - Config::get().pointOfInterest.y();
+            double ptx = ((double)pt[0] * (double)j["transform"]["scale"][0]) + (double)j["transform"]["translate"][0]
+                    - Config::get().pointOfInterest.x();
+            double pty = ((double)pt[1] * (double)j["transform"]["scale"][1]) + (double)j["transform"]["translate"][1]
+                    - Config::get().pointOfInterest.y();
             double ptz = ((double)pt[2] * (double)j["transform"]["scale"][2]) + (double)j["transform"]["translate"][2];
-            importedBuildingPts->emplace_back(ptx, pty, ptz);
+            importedBuildingPts->insert(Point_3(ptx, pty, ptz));
         }
 
         //-- Separate individual buildings
@@ -172,7 +324,7 @@ void IO::print_progress_bar(int percent) {
     std::clog << percent << "%     " << std::flush;
 }
 
-void IO::output_obj(const OutputFeatures& allFeatures) {
+void IO::output_obj(const OutputFeaturesPtr& allFeatures) {
     int numOutputSurfaces = TopoFeature::get_num_output_layers();
     std::vector<std::ofstream> of;
     std::vector<std::string>   fs(numOutputSurfaces), bs(numOutputSurfaces);
@@ -221,7 +373,7 @@ void IO::output_obj(const OutputFeatures& allFeatures) {
     for (auto& f : of) f.close();
 }
 
-void IO::output_stl(const OutputFeatures& allFeatures) {
+void IO::output_stl(const OutputFeaturesPtr& allFeatures) {
     int numOutputLayers = TopoFeature::get_num_output_layers();
     std::vector<std::ofstream> of;
     std::vector<std::string>   fs(numOutputLayers);
@@ -249,7 +401,7 @@ void IO::output_stl(const OutputFeatures& allFeatures) {
     for (auto& f : of) f.close();
 }
 
-void IO::output_cityjson(const OutputFeatures& allFeatures) {
+void IO::output_cityjson(const OutputFeaturesPtr& allFeatures) {
     std::ofstream of;
     nlohmann::json j;
 
@@ -298,12 +450,9 @@ void IO::output_cityjson(const OutputFeatures& allFeatures) {
 void IO::get_obj_pts(const Mesh& mesh,
                      std::string& fs,
                      std::string& bs,
-                     std::unordered_map<std::string, int>& dPts)
-{
+                     std::unordered_map<std::string, int>& dPts) {
     for (auto& face : mesh.faces()) {
         if (IO::is_degen(mesh, face)) continue;
-        std::vector<int> faceIdx; faceIdx.reserve(3);
-        std::string fsTemp;
         std::string bsTemp;
         for (auto index : CGAL::vertices_around_face(mesh.halfedge(face), mesh)) {
             std::string pt = gen_key_bucket(mesh.point(index));
@@ -312,12 +461,9 @@ void IO::get_obj_pts(const Mesh& mesh,
                 fs += "\nv " + pt;
                 bsTemp += " " + std::to_string(dPts.size() + 1);
 
-                faceIdx.push_back(dPts.size() + 1);
-
                 dPts[pt] = dPts.size() + 1;
             } else {
                 bsTemp += " " + std::to_string(it->second);
-                faceIdx.push_back(it->second);
             }
         }
         bs += "\nf" + bsTemp;
@@ -351,21 +497,17 @@ void IO::get_cityjson_geom(const Mesh& mesh, nlohmann::json& g, std::unordered_m
     g["boundaries"];
     for (auto& face: mesh.faces()) {
         if (IO::is_degen(mesh, face)) continue;
-        std::vector<int> faceIdx;
-        faceIdx.reserve(3);
         std::vector<int> tempPoly;
         tempPoly.reserve(3);
         for (auto index: CGAL::vertices_around_face(mesh.halfedge(face), mesh)) {
             std::string pt = gen_key_bucket(mesh.point(index));
             auto it = dPts.find(pt);
             if (it == dPts.end()) {
-                faceIdx.push_back(dPts.size());
 
                 tempPoly.push_back(dPts.size());
 
                 dPts[pt] = dPts.size();
             } else {
-                faceIdx.push_back(it->second);
                 tempPoly.push_back(it->second);
             }
         }
@@ -401,32 +543,58 @@ void IO::output_log() {
     if (!Config::get().outputLog) return;
     fs::current_path(Config::get().outputDir);
 
-    //-- Output log file
     Config::get().log <<"\n// ------------------------------------------------------------------------------------------------ //" << std::endl;
     std::cout << "\nCreating log file '" << Config::get().logName << "'" << std::endl;
     std::ofstream of;
     of.open(Config::get().logName);
     of << Config::get().logSummary.str() << Config::get().log.str();
     of.close();
+}
+
+void IO::output_log(const BuildingsPtr failedBuildings) {
+    if (!Config::get().outputLog) return;
+    fs::current_path(Config::get().outputDir);
+
+    //-- Output log file
+    IO::output_log();
 
     //-- Output failed reconstructions
-    if (!Config::get().failedBuildings.empty()) {
+    if (!failedBuildings.empty()) {
         std::cout << "Outputting failed building reconstructions to 'failedReconstructions.geojson'"
                   << std::endl;
-        //- Parse again the buildings polygon
-        std::ifstream ifs(Config::get().workDir.append(Config::get().gisdata).string());
-        nlohmann::json j = nlohmann::json::parse(ifs);
-        //- Extract failed reconstructions
-        nlohmann::json b;
-        for (int i: Config::get().failedBuildings) {
-            b["features"].push_back(j["features"][i]);
+        nlohmann::json j;
+        //-- Header
+        if (!Config::get().crsInfo.empty())
+            j["crs"]["properties"]["name"] = "urn:ogc:def:crs:" + Config::get().crsInfo;
+        else
+            j["crs"]["properties"]["name"] = "";
+        j["crs"]["type"] = "name";
+        j["name"] = "failedBuildings";
+        j["type"] = "featureCollection";
+        //-- Features
+        for (auto f : failedBuildings) {
+            nlohmann::json b;
+            b["type"] = "Feature";
+            b["geometry"]["type"] = "Polygon";
+            b["properties"]["gid"] = f->get_id();
+            bool outerRing = true;
+            for (auto ring : f->get_poly().rings()) {
+                if (outerRing) outerRing = false;
+                else ring.reverse_orientation();
+                nlohmann::json c;
+                for (int i = 0; i < ring.size() + 1; ++i) {
+                    c.emplace_back();
+                    c.back().push_back(ring[i % ring.size()].x() + Config::get().pointOfInterest.x());
+                    c.back().push_back(ring[i % ring.size()].y() + Config::get().pointOfInterest.y());
+                }
+                b["geometry"]["coordinates"].push_back(c);
+            }
+            j["features"].push_back(b);
         }
-        b["crs"] = j["crs"];
-        b["name"] = "failedBuildings";
-        b["type"] = j["type"];
         //- Write to file
+        std::ofstream of;
         of.open("failedReconstructions.geojson");
-        of << b.dump();
+        of << j.dump();
         of.close();
     }
 }
